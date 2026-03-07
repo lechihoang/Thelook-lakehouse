@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  trino:
+    image: trinodb/trino:400
+    container_name: tpcds-trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino-conf:/etc/trino
+    networks:
+      - data_network
+
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tpcds-superset
+    ports:
+      - "8088:8088"
+    networks:
+      - data_network
+
+networks:
+  data_network:
+    driver: bridge
+    name: data_network

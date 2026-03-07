@@ -1,0 +1,24 @@
+{
+  "name": "tpcds-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "admin",
+    "database.password": "admin123",
+    "database.dbname": "tpcds",
+    "topic.prefix": "tpcds",
+    "schema.include.list": "public",
+    "table.include.list": "public.store_sales,public.store_returns,public.web_sales,public.web_returns,public.catalog_sales,public.catalog_returns,public.inventory",
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_tpcds_slot",
+    "publication.name": "debezium_tpcds_pub",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+    "decimal.handling.mode": "double",
+    "time.precision.mode": "connect",
+    "snapshot.mode": "initial"
+  }
+}
