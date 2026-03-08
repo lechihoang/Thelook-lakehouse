@@ -1,23 +1,26 @@
 include .env
 export
 
-CORE    := docker compose -f docker-compose.yaml
-KAFKA   := docker compose -f ./kafka/docker-compose.yaml
-TRINO   := docker compose -f ./trino/docker-compose.yaml
+DBT_IMAGE := tpcds-dbt:latest
+
+CORE     := docker compose -f docker-compose.yaml
+KAFKA    := docker compose -f ./kafka/docker-compose.yaml
+TRINO    := docker compose -f ./trino/docker-compose.yaml
 SUPERSET := docker compose -f ./superset/docker-compose.yaml
-AIRFLOW := docker compose -f ./dbt-airflow/docker-compose.yaml
+AIRFLOW  := docker compose -f ./airflow/docker-compose.yaml
 
 .PHONY: help \
-        up down logs \
+        up down \
         up-core up-kafka up-trino up-superset up-airflow \
         down-core down-kafka down-trino down-superset down-airflow \
-        setup ps
+        build-dbt setup ps
 
 # ─── Default ──────────────────────────────────────────────────
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "  setup          Load TPC-DS data into PostgreSQL (run once)"
+	@echo "  build-dbt      Build the dbt Docker image"
 	@echo ""
 	@echo "  up             Start all stacks"
 	@echo "  down           Stop all stacks"
@@ -27,7 +30,7 @@ help:
 	@echo "  up-kafka       Start Kafka + Debezium"
 	@echo "  up-trino       Start Trino"
 	@echo "  up-superset    Start Superset"
-	@echo "  up-airflow     Start Airflow + dbt"
+	@echo "  up-airflow     Build dbt image + start Airflow"
 	@echo ""
 	@echo "  down-core      Stop core stack"
 	@echo "  down-kafka     Stop Kafka"
@@ -44,6 +47,10 @@ help:
 setup:
 	bash postgres/scripts/setup-tpcds.sh
 
+# ─── Build ────────────────────────────────────────────────────
+build-dbt:
+	docker build -t $(DBT_IMAGE) ./dbt
+
 # ─── Up ───────────────────────────────────────────────────────
 up-core:
 	$(CORE) up -d
@@ -57,8 +64,8 @@ up-trino:
 up-superset:
 	$(SUPERSET) up -d --build
 
-up-airflow:
-	$(AIRFLOW) up -d
+up-airflow: build-dbt
+	$(AIRFLOW) up -d --build
 
 up: up-core up-kafka up-trino up-superset up-airflow
 

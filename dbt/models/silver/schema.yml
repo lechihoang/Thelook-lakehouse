@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: silver_store_sales
+    description: "Store sales enriched with customer, product, store, and date dimensions"
+    columns:
+      - name: ticket_number
+        tests: [not_null]
+      - name: sold_date_sk
+        tests: [not_null]
+      - name: sale_date
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: net_paid
+        tests: [not_null]
+      - name: channel
+        tests:
+          - accepted_values:
+              values: ['store']
+
+  - name: silver_web_sales
+    description: "Web sales enriched with customer, product, and date dimensions"
+    columns:
+      - name: order_number
+        tests: [not_null]
+      - name: sale_date
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: net_paid
+        tests: [not_null]
+      - name: channel
+        tests:
+          - accepted_values:
+              values: ['web']
+
+  - name: silver_catalog_sales
+    description: "Catalog sales enriched with customer, product, and date dimensions"
+    columns:
+      - name: order_number
+        tests: [not_null]
+      - name: sale_date
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: net_paid
+        tests: [not_null]
+      - name: channel
+        tests:
+          - accepted_values:
+              values: ['catalog']
+
+  - name: silver_store_returns
+    description: "Store returns enriched with item and date dimensions"
+    columns:
+      - name: ticket_number
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: return_date
+        tests: [not_null]
+
+  - name: silver_web_returns
+    description: "Web returns enriched with item and date dimensions"
+    columns:
+      - name: order_number
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: return_date
+        tests: [not_null]
+
+  - name: silver_catalog_returns
+    description: "Catalog returns enriched with item and date dimensions"
+    columns:
+      - name: order_number
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: return_date
+        tests: [not_null]
+
+  - name: silver_inventory
+    description: "Inventory enriched with item, warehouse, and date dimensions"
+    columns:
+      - name: date_sk
+        tests: [not_null]
+      - name: item_sk
+        tests: [not_null]
+      - name: warehouse_sk
+        tests: [not_null]
+      - name: quantity_on_hand
+        tests: [not_null]

@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: gold_sales_by_channel
+    description: "Daily revenue and transaction counts aggregated by sales channel"
+    columns:
+      - name: sale_date
+        tests: [not_null]
+      - name: channel
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['store', 'web', 'catalog']
+      - name: total_transactions
+        tests: [not_null]
+      - name: total_revenue
+        tests: [not_null]
+
+  - name: gold_product_performance
+    description: "Revenue, profit, and margin per product item"
+    columns:
+      - name: item_sk
+        tests: [not_null, unique]
+      - name: product_name
+        tests: [not_null]
+      - name: total_revenue
+        tests: [not_null]
+
+  - name: gold_customer_segments
+    description: "Customer lifetime value with VIP / High / Regular / Low segmentation"
+    columns:
+      - name: customer_sk
+        tests: [not_null, unique]
+      - name: total_spend
+        tests: [not_null]
+      - name: customer_segment
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['VIP', 'High Value', 'Regular', 'Low Value']
+
+  - name: gold_inventory_status
+    description: "Stock levels and out-of-stock rates by category and warehouse"
+    columns:
+      - name: item_sk
+        tests: [not_null]
+      - name: warehouse_sk
+        tests: [not_null]
+
+  - name: gold_return_rate
+    description: "Return rate percentage by channel, category, and brand"
+    columns:
+      - name: channel
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['store', 'web', 'catalog']
+
+  - name: gold_shipping_analysis
+    description: "Orders and returns broken down by shipping mode and carrier"
+
+  - name: gold_promotion_effectiveness
+    description: "Promotion ROI, discount rate, and profit margin per campaign"
+
+  - name: gold_geographic_analysis
+    description: "Revenue and return rate by country, state, and city"
+
+  - name: gold_call_center_analysis
+    description: "Call center performance metrics and top return reasons"

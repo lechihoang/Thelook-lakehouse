@@ -191,9 +191,12 @@ make logs-airflow
 # Open Trino CLI
 docker exec -it tpcds-trino trino --catalog delta --schema bronze
 
+# Trigger DAG manually
+docker exec tpcds-airflow airflow dags trigger tpcds_dbt_pipeline
+
 # Run dbt manually
 docker exec tpcds-airflow \
-  /opt/dbt_venv/bin/dbt run \
+  dbt run \
   --project-dir /opt/airflow/dbt \
   --profiles-dir /opt/airflow/dbt
 

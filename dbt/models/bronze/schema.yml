@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: bronze_store_sales
+    description: "View on raw CDC events for in-store sales from Delta Lake bronze layer"
+    columns:
+      - name: ss_ticket_number
+        tests: [not_null]
+      - name: ss_item_sk
+        tests: [not_null]
+      - name: ss_sold_date_sk
+        tests: [not_null]
+      - name: ss_net_paid
+        tests: [not_null]
+
+  - name: bronze_web_sales
+    description: "View on raw CDC events for online sales"
+    columns:
+      - name: ws_order_number
+        tests: [not_null]
+      - name: ws_item_sk
+        tests: [not_null]
+      - name: ws_net_paid
+        tests: [not_null]
+
+  - name: bronze_catalog_sales
+    description: "View on raw CDC events for catalog sales"
+    columns:
+      - name: cs_order_number
+        tests: [not_null]
+      - name: cs_item_sk
+        tests: [not_null]
+      - name: cs_net_paid
+        tests: [not_null]
+
+  - name: bronze_store_returns
+    description: "View on raw CDC events for in-store returns"
+    columns:
+      - name: sr_ticket_number
+        tests: [not_null]
+      - name: sr_item_sk
+        tests: [not_null]
+
+  - name: bronze_web_returns
+    description: "View on raw CDC events for online returns"
+    columns:
+      - name: wr_order_number
+        tests: [not_null]
+      - name: wr_item_sk
+        tests: [not_null]
+
+  - name: bronze_catalog_returns
+    description: "View on raw CDC events for catalog returns"
+    columns:
+      - name: cr_order_number
+        tests: [not_null]
+      - name: cr_item_sk
+        tests: [not_null]
+
+  - name: bronze_inventory
+    description: "View on raw daily inventory levels"
+    columns:
+      - name: inv_date_sk
+        tests: [not_null]
+      - name: inv_item_sk
+        tests: [not_null]
+      - name: inv_warehouse_sk
+        tests: [not_null]
+      - name: inv_quantity_on_hand
+        tests: [not_null]

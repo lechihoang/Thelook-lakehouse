@@ -1,0 +1,144 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw Delta Lake tables ingested via Debezium CDC from PostgreSQL TPC-DS"
+    database: delta
+    schema: bronze
+    freshness:
+      warn_after: {count: 1, period: hour}
+      error_after: {count: 24, period: hour}
+    loaded_at_field: "__source_ts_ms"
+
+    tables:
+      # ── Fact tables (CDC-streamed) ──────────────────────────
+      - name: store_sales
+        description: "In-store sales transactions"
+        columns:
+          - name: ss_ticket_number
+            description: "Sales ticket number (PK)"
+            tests: [not_null]
+          - name: ss_item_sk
+            tests: [not_null]
+          - name: ss_sold_date_sk
+            tests: [not_null]
+          - name: ss_net_paid
+            tests: [not_null]
+
+      - name: web_sales
+        description: "Online sales transactions"
+        columns:
+          - name: ws_order_number
+            description: "Web order number (PK)"
+            tests: [not_null]
+          - name: ws_item_sk
+            tests: [not_null]
+          - name: ws_net_paid
+            tests: [not_null]
+
+      - name: catalog_sales
+        description: "Catalog sales transactions"
+        columns:
+          - name: cs_order_number
+            description: "Catalog order number (PK)"
+            tests: [not_null]
+          - name: cs_item_sk
+            tests: [not_null]
+          - name: cs_net_paid
+            tests: [not_null]
+
+      - name: store_returns
+        description: "In-store return transactions"
+        columns:
+          - name: sr_ticket_number
+            tests: [not_null]
+          - name: sr_item_sk
+            tests: [not_null]
+
+      - name: web_returns
+        description: "Online return transactions"
+        columns:
+          - name: wr_order_number
+            tests: [not_null]
+          - name: wr_item_sk
+            tests: [not_null]
+
+      - name: catalog_returns
+        description: "Catalog return transactions"
+        columns:
+          - name: cr_order_number
+            tests: [not_null]
+          - name: cr_item_sk
+            tests: [not_null]
+
+      - name: inventory
+        description: "Daily inventory levels by item and warehouse"
+        columns:
+          - name: inv_date_sk
+            tests: [not_null]
+          - name: inv_item_sk
+            tests: [not_null]
+          - name: inv_warehouse_sk
+            tests: [not_null]
+
+      # ── Dimension tables ────────────────────────────────────
+      - name: customer
+        description: "Customer master data"
+        columns:
+          - name: c_customer_sk
+            tests: [not_null, unique]
+
+      - name: customer_address
+        description: "Customer address records"
+        columns:
+          - name: ca_address_sk
+            tests: [not_null, unique]
+
+      - name: customer_demographics
+        columns:
+          - name: cd_demo_sk
+            tests: [not_null, unique]
+
+      - name: date_dim
+        description: "Date dimension — calendar attributes"
+        columns:
+          - name: d_date_sk
+            tests: [not_null, unique]
+
+      - name: time_dim
+        description: "Time-of-day dimension"
+        columns:
+          - name: t_time_sk
+            tests: [not_null, unique]
+
+      - name: item
+        description: "Product/item master"
+        columns:
+          - name: i_item_sk
+            tests: [not_null, unique]
+
+      - name: store
+        description: "Store master"
+        columns:
+          - name: s_store_sk
+            tests: [not_null, unique]
+
+      - name: warehouse
+        columns:
+          - name: w_warehouse_sk
+            tests: [not_null, unique]
+
+      - name: promotion
+        columns:
+          - name: p_promo_sk
+            tests: [not_null, unique]
+
+      - name: household_demographics
+        columns:
+          - name: hd_demo_sk
+            tests: [not_null, unique]
+
+      - name: income_band
+        columns:
+          - name: ib_income_band_sk
+            tests: [not_null, unique]
