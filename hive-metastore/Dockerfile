@@ -1,4 +1,4 @@
-FROM bitsondatadev/hive-metastore:latest
+FROM --platform=linux/amd64 bitsondatadev/hive-metastore:latest
 
 USER root
 

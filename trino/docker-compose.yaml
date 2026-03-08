@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  trino:
+    image: trinodb/trino:400
+    container_name: tpcds-trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./conf:/etc/trino
+    networks:
+      - data_network
+
+networks:
+  data_network:
+    external: true
+    name: data_network

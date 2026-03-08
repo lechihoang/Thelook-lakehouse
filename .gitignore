@@ -2,9 +2,6 @@
 .claude/
 
 # Environment
-.env
-.env.local
-.env.*.local
 
 # Python
 __pycache__/
@@ -24,11 +21,13 @@ env/
 *.ipynb
 
 # Data & generated files
+# tpcds-data/ is ~1GB, not committed — re-run setup-tpcds.sh to regenerate
+# (script skips compile+generate if .dat files already exist)
 postgres/data/
-*.csv
+tpcds-data/
+tpcds-kit/
 *.dat
 *.tbl
-tpcds-kit/
 
 # Docker volumes (if bind-mounted locally)
 mariadb/

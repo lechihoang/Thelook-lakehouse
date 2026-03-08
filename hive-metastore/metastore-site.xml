@@ -51,4 +51,16 @@
     <name>hive.metastore.warehouse.dir</name>
     <value>s3a://lakehouse/</value>
   </property>
+
+  <!-- Use default partition expression proxy (standalone metastore has no hive-exec JAR) -->
+  <property>
+    <name>metastore.expression.proxy</name>
+    <value>org.apache.hadoop.hive.metastore.DefaultPartitionExpressionProxy</value>
+  </property>
+
+  <!-- Remove DumpDirCleanerTask (requires hive-exec JAR, not present in standalone) -->
+  <property>
+    <name>metastore.task.threads.always</name>
+    <value>org.apache.hadoop.hive.metastore.events.EventCleanerTask</value>
+  </property>
 </configuration>

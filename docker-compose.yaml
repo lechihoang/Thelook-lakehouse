@@ -96,6 +96,7 @@ services:
 
   # ─── Hive Metastore ─────────────────────────────────────────
   hive-metastore:
+    platform: linux/amd64
     build:
       context: hive-metastore
       dockerfile: Dockerfile
@@ -161,7 +162,8 @@ services:
       - -c
       - >
         sleep 10 &&
-        /opt/spark/bin/spark-class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2
+        /opt/spark/bin/spark-submit
+        --class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2
         --master spark://spark-master:7077
         --executor-memory 1G
         --driver-memory 1G

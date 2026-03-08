@@ -82,6 +82,27 @@ services:
       - default
       - data_network
 
+  # ─── Debezium connector auto-registration ────────────────────
+  debezium-init:
+    image: curlimages/curl:latest
+    container_name: tpcds-debezium-init
+    depends_on:
+      - debezium
+    volumes:
+      - ./conf/register-tpcds-connector.json:/config/connector.json:ro
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for Debezium...';
+        until curl -sf http://debezium:8083/connectors; do sleep 3; done;
+        echo 'Registering connector...';
+        curl -sf -X POST http://debezium:8083/connectors
+          -H 'Content-Type: application/json'
+          -d @/config/connector.json &&
+        echo 'Connector registered.' ||
+        echo 'Connector may already exist, skipping.';
+      "
+    restart: on-failure
+
 networks:
   data_network:
     external: true

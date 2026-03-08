@@ -46,9 +46,10 @@ PostgreSQL (TPC-DS)  ←──  Python Simulator
 
 - Docker Desktop ≥ 24.x — allocate at least **8 GB RAM**
 - Docker Compose v2
-- `make` and `gcc` (for compiling tpcds-kit in Step 1)
+- **macOS / Linux**: supported natively
+- **Windows**: requires [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) — run all commands inside WSL
 
-> All credentials and ports are pre-configured in `.env`. No manual network setup required.
+> Credentials and ports are pre-configured in `.env`. Build tools (`gcc`, `make`) are installed automatically on Linux if missing.
 
 ---
 
@@ -57,7 +58,7 @@ PostgreSQL (TPC-DS)  ←──  Python Simulator
 ### Step 1 — Start core stack
 
 ```bash
-docker compose up -d
+make up-core
 ```
 
 Starts: PostgreSQL, MinIO, MariaDB, Hive Metastore, Spark cluster, Jupyter Notebook, Simulator.
@@ -65,7 +66,7 @@ Starts: PostgreSQL, MinIO, MariaDB, Hive Metastore, Spark cluster, Jupyter Noteb
 Once healthy, load the TPC-DS dataset into PostgreSQL (run once):
 
 ```bash
-bash postgres/scripts/setup-tpcds.sh
+make setup
 ```
 
 This compiles `dsdgen`, generates ~1 GB of retail data (24 tables, scale factor 1), loads it into PostgreSQL, and creates the Debezium publication.
@@ -75,18 +76,11 @@ This compiles `dsdgen`, generates ~1 GB of retail data (24 tables, scale factor 
 ### Step 2 — Start Kafka + Debezium
 
 ```bash
-docker compose -f kafka/docker-compose.yaml up -d
+make up-kafka
 ```
 
-Wait ~30 seconds for Debezium to be ready, then register the connector:
+Debezium connector is registered automatically by the `debezium-init` container. Verify:
 
-```bash
-curl -X POST http://localhost:8083/connectors \
-  -H 'Content-Type: application/json' \
-  -d @kafka/conf/register-tpcds-connector.json
-```
-
-Verify:
 ```bash
 curl -s http://localhost:8083/connectors/tpcds-connector/status | python3 -m json.tool
 ```
@@ -112,7 +106,8 @@ CDC events from Kafka flow into Delta tables at `s3a://lakehouse/bronze/`.
 ### Step 4 — Start Trino + Superset
 
 ```bash
-docker compose -f trino-superset/docker-compose.yaml up -d
+make up-trino
+make up-superset
 ```
 
 Open Superset at **http://localhost:8088** (admin / admin123):
@@ -124,7 +119,7 @@ Open Superset at **http://localhost:8088** (admin / admin123):
 ### Step 5 — Start Airflow + dbt
 
 ```bash
-docker compose -f dbt-airflow/docker-compose.yaml up -d
+make up-airflow
 ```
 
 Open Airflow at **http://localhost:8081** (admin / admin123).
@@ -180,8 +175,18 @@ docker exec tpcds-airflow airflow dags trigger tpcds_dbt_pipeline
 ## Useful Commands
 
 ```bash
-# Check all running containers
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# Start / stop everything
+make up
+make down
+
+# Check running containers
+make ps
+
+# Follow logs
+make logs-core
+make logs-kafka
+make logs-superset
+make logs-airflow
 
 # Open Trino CLI
 docker exec -it tpcds-trino trino --catalog delta --schema bronze
@@ -194,12 +199,6 @@ docker exec tpcds-airflow \
 
 # View simulator logs
 docker logs -f tpcds-simulator
-
-# Stop all stacks
-docker compose down
-docker compose -f kafka/docker-compose.yaml down
-docker compose -f trino-superset/docker-compose.yaml down
-docker compose -f dbt-airflow/docker-compose.yaml down
 ```
 
 ---
