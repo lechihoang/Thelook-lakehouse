@@ -4,6 +4,8 @@ services:
   trino:
     image: trinodb/trino:400
     container_name: tpcds-trino
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     volumes:

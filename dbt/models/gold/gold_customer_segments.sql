@@ -1,44 +1,22 @@
-{{ config(materialized='table', schema='gold') }}
+{{ config(materialized='table') }}
 
-WITH all_sales AS (
-    SELECT customer_sk, customer_name, customer_gender,
-           education_status, marital_status,
-           net_paid, net_profit, quantity, sale_date, channel
-    FROM {{ ref('silver_store_sales') }}
-    UNION ALL
-    SELECT customer_sk, customer_name, customer_gender,
-           NULL AS education_status, NULL AS marital_status,
-           net_paid, net_profit, quantity, sale_date, channel
-    FROM {{ ref('silver_web_sales') }}
-    UNION ALL
-    SELECT customer_sk, customer_name, customer_gender,
-           NULL AS education_status, NULL AS marital_status,
-           net_paid, net_profit, quantity, sale_date, channel
-    FROM {{ ref('silver_catalog_sales') }}
-)
-
+-- Customer segments by demographics and purchase behavior
 SELECT
-    customer_sk,
-    customer_name,
+    customer_country,
     customer_gender,
-    education_status,
-    marital_status,
-    COUNT(*)                        AS total_orders,
-    SUM(quantity)                   AS total_units_bought,
-    ROUND(SUM(net_paid), 2)         AS total_spend,
-    ROUND(AVG(net_paid), 2)         AS avg_order_value,
-    COUNT(DISTINCT sale_date)       AS active_days,
-    COUNT(DISTINCT channel)         AS channels_used,
-    MIN(sale_date)                  AS first_purchase_date,
-    MAX(sale_date)                  AS last_purchase_date,
     CASE
-        WHEN SUM(net_paid) >= 10000 THEN 'VIP'
-        WHEN SUM(net_paid) >= 3000  THEN 'High Value'
-        WHEN SUM(net_paid) >= 500   THEN 'Regular'
-        ELSE 'Low Value'
-    END                             AS customer_segment
-
-FROM all_sales
-WHERE customer_sk IS NOT NULL
-GROUP BY customer_sk, customer_name, customer_gender, education_status, marital_status
-ORDER BY total_spend DESC
+        WHEN customer_age < 25 THEN '18-24'
+        WHEN customer_age < 35 THEN '25-34'
+        WHEN customer_age < 45 THEN '35-44'
+        WHEN customer_age < 55 THEN '45-54'
+        ELSE '55+'
+    END                                             AS age_group,
+    traffic_source,
+    COUNT(DISTINCT user_id)                         AS customer_count,
+    COUNT(DISTINCT order_id)                        AS total_orders,
+    ROUND(SUM(revenue), 2)                          AS total_revenue,
+    ROUND(SUM(revenue) / NULLIF(COUNT(DISTINCT user_id), 0), 2) AS revenue_per_customer,
+    ROUND(AVG(sale_price), 2)                       AS avg_order_value
+FROM {{ ref('silver_order_items') }}
+WHERE item_status NOT IN ('Cancelled')
+GROUP BY 1, 2, 3, 4

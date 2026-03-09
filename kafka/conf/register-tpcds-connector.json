@@ -1,5 +1,5 @@
 {
-  "name": "tpcds-connector",
+  "name": "thelook-connector",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "database.hostname": "postgres",
@@ -9,16 +9,24 @@
     "database.dbname": "tpcds",
     "topic.prefix": "tpcds",
     "schema.include.list": "public",
-    "table.include.list": "public.store_sales,public.store_returns,public.web_sales,public.web_returns,public.catalog_sales,public.catalog_returns,public.inventory",
+    "table.include.list": "public.users,public.orders,public.order_items,public.events,public.products,public.dist_centers",
     "plugin.name": "pgoutput",
-    "slot.name": "debezium_tpcds_slot",
-    "publication.name": "debezium_tpcds_pub",
+    "slot.name": "debezium_thelook_slot",
+    "publication.name": "debezium_thelook_pub",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "key.converter.schemas.enable": "false",
     "value.converter.schemas.enable": "false",
     "decimal.handling.mode": "double",
     "time.precision.mode": "connect",
-    "snapshot.mode": "initial"
+    "snapshot.mode": "initial",
+    "heartbeat.interval.ms": "10000",
+    "heartbeat.action.query": "INSERT INTO public.heartbeat (id, ts) VALUES (1, NOW()) ON CONFLICT (id) DO UPDATE SET ts = NOW();",
+    "errors.tolerance": "all",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true",
+    "errors.deadletterqueue.topic.name": "tpcds.dlq",
+    "errors.deadletterqueue.topic.replication.factor": "1",
+    "errors.deadletterqueue.context.headers.enable": "true"
   }
 }

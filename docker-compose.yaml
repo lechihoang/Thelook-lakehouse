@@ -89,7 +89,7 @@ services:
     networks:
       - data_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -137,8 +137,8 @@ services:
     depends_on:
       - spark-master
     environment:
-      SPARK_WORKER_MEMORY: 2g
-      SPARK_WORKER_CORES: "2"
+      SPARK_WORKER_MEMORY: 4g
+      SPARK_WORKER_CORES: "4"
     command:
       - /opt/spark/bin/spark-class
       - org.apache.spark.deploy.worker.Worker
@@ -165,6 +165,7 @@ services:
         /opt/spark/bin/spark-submit
         --class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2
         --master spark://spark-master:7077
+        --total-executor-cores 2
         --executor-memory 1G
         --driver-memory 1G
 
@@ -187,25 +188,6 @@ services:
     networks:
       - data_network
 
-  # ─── Transaction Simulator ───────────────────────────────────
-  simulator:
-    build:
-      context: simulator
-      dockerfile: Dockerfile
-    container_name: tpcds-simulator
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      INSERT_INTERVAL_SEC: "5"
-    networks:
-      - data_network
-    restart: unless-stopped
 
 volumes:
   postgres_data:

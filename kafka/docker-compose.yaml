@@ -8,13 +8,20 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ─── Kafka Broker ────────────────────────────────────────────
   broker:
     image: confluentinc/cp-server:7.5.0
     container_name: tpcds-broker
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
+    restart: on-failure
     ports:
       - "9092:9092"
     environment:
@@ -90,17 +97,18 @@ services:
       - debezium
     volumes:
       - ./conf/register-tpcds-connector.json:/config/connector.json:ro
-    entrypoint: >
-      sh -c "
-        echo 'Waiting for Debezium...';
-        until curl -sf http://debezium:8083/connectors; do sleep 3; done;
-        echo 'Registering connector...';
-        curl -sf -X POST http://debezium:8083/connectors
-          -H 'Content-Type: application/json'
-          -d @/config/connector.json &&
-        echo 'Connector registered.' ||
-        echo 'Connector may already exist, skipping.';
-      "
+    entrypoint:
+      - sh
+      - -c
+      - |
+          echo 'Waiting for Debezium...'
+          until curl -sf http://debezium:8083/connectors; do sleep 3; done
+          echo 'Registering connector...'
+          curl -sf -X POST http://debezium:8083/connectors \
+            -H 'Content-Type: application/json' \
+            -d @/config/connector.json \
+          && echo 'Connector registered.' \
+          || echo 'Connector may already exist, skipping.'
     restart: on-failure
 
 networks:

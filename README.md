@@ -1,26 +1,26 @@
-# TPC-DS Lakehouse Pipeline
+# TheLook E-commerce Lakehouse
 
-A streaming data lakehouse built on the **TPC-DS** retail benchmark dataset, following the **Medallion Architecture** (Bronze → Silver → Gold).
+A streaming data lakehouse built on the **TheLook E-commerce** dataset, following the **Medallion Architecture** (Bronze → Silver → Gold).
 
 ---
 
 ## Architecture
 
 ```
-PostgreSQL (TPC-DS)  ←──  Python Simulator
-        │ CDC via Debezium (pgoutput)
+TheLook Simulator (Python)
+        │ INSERT / UPDATE via psycopg2
         ▼
-    Kafka Broker
-        │ Spark Structured Streaming
-        ▼
-    MinIO (Delta Lake)
-    ├── bronze/   raw CDC events
-    ├── silver/   enriched + dimension-joined
-    └── gold/     aggregated business metrics
-        │
-   ┌────┴────┐
-   Trino    Airflow + dbt
-   Superset
+   PostgreSQL 15  ─── Debezium CDC (pgoutput) ───▶  Kafka
+                                                        │ Spark Structured Streaming
+                                                        ▼
+                                                   MinIO (Delta Lake)
+                                                   ├── bronze/   raw CDC events
+                                                   ├── silver/   enriched tables
+                                                   └── gold/     business metrics
+                                                        │
+                                                   ┌────┴────┐
+                                                  Trino    Airflow + dbt
+                                                  Superset
 ```
 
 ---
@@ -42,68 +42,76 @@ PostgreSQL (TPC-DS)  ←──  Python Simulator
 
 ---
 
-## Prerequisites
+## Dataset — TheLook E-commerce
 
-- Docker Desktop ≥ 24.x — allocate at least **8 GB RAM**
-- Docker Compose v2
-- **macOS / Linux**: supported natively
-- **Windows**: requires [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) — run all commands inside WSL
+Synthetic e-commerce dataset modelled after the [Google BigQuery public dataset](https://console.cloud.google.com/marketplace/product/bigquery-public-data/thelook-ecommerce).
 
-> Credentials and ports are pre-configured in `.env`. Build tools (`gcc`, `make`) are installed automatically on Linux if missing.
+**6 tables:**
+
+| Table | Role | Description |
+|---|---|---|
+| `users` | Dimension | Customer profiles (name, age, gender, location, traffic source) |
+| `products` | Dimension | Product catalog — 29,120 items loaded from CSV |
+| `dist_centers` | Dimension | 10 distribution center locations |
+| `orders` | Fact | Order transactions with status lifecycle |
+| `order_items` | Fact | Line items per order with sale price |
+| `events` | Fact | Web/app behavioral events (browse, cart, purchase, return) |
+
+**Simulator behavior:**
+- Initializes 1,000 users + full product catalog on first run
+- Continuously generates purchases at ~2 events/second
+- Order status follows a state machine: `Processing → Shipped → Delivered → Returned/Cancelled`
+- 5% chance to create a new user per iteration
+- 40% chance to advance a random order's status per iteration
+- 20% chance to generate anonymous "ghost" browsing events
 
 ---
 
-## Setup
+## Prerequisites
 
-### Step 1 — Start core stack
+- Docker Desktop ≥ 24.x — allocate at least **12 GB RAM**
+- Docker Compose v2
+- Python 3.12 (for the simulator)
+
+> Credentials and ports are pre-configured in `.env`.
+
+---
+
+## Part 1 — Start Services
+
+### Step 1 — Core stack
 
 ```bash
 make up-core
 ```
 
-Starts: PostgreSQL, MinIO, MariaDB, Hive Metastore, Spark cluster, Jupyter Notebook, Simulator.
-
-Once healthy, load the TPC-DS dataset into PostgreSQL (run once):
-
-```bash
-make setup
-```
-
-This compiles `dsdgen`, generates ~1 GB of retail data (24 tables, scale factor 1), loads it into PostgreSQL, and creates the Debezium publication.
+Starts: PostgreSQL, MinIO, MariaDB, Hive Metastore, Spark cluster, Jupyter Notebook.
 
 ---
 
-### Step 2 — Start Kafka + Debezium
+### Step 2 — Kafka + Debezium
 
 ```bash
 make up-kafka
 ```
 
-Debezium connector is registered automatically by the `debezium-init` container. Verify:
+Register the Debezium connector (run once after Kafka is healthy):
 
 ```bash
-curl -s http://localhost:8083/connectors/tpcds-connector/status | python3 -m json.tool
+curl -s -X POST http://localhost:8083/connectors \
+  -H "Content-Type: application/json" \
+  -d @kafka/conf/register-tpcds-connector.json
+```
+
+Verify:
+
+```bash
+curl -s http://localhost:8083/connectors/thelook-connector/status | python3 -m json.tool
 ```
 
 ---
 
-### Step 3 — Start the Spark Streaming job
-
-Open Jupyter at **http://localhost:8888** and run `work/stream_processor.py`.
-
-Or submit directly:
-```bash
-docker exec tpcds-notebook \
-  spark-submit \
-    --master spark://spark-master:7077 \
-    /home/jovyan/work/stream_processor.py
-```
-
-CDC events from Kafka flow into Delta tables at `s3a://lakehouse/bronze/`.
-
----
-
-### Step 4 — Start Trino + Superset
+### Step 3 — Trino + Superset
 
 ```bash
 make up-trino
@@ -112,22 +120,55 @@ make up-superset
 
 Open Superset at **http://localhost:8088** (admin / admin123):
 1. **Settings → Database Connections → + Database**
-2. Choose **Trino**, enter connection string: `trino://trino:8080/delta`
+2. Choose **Trino**, connection string: `trino://trino@trino:8080/delta`
 
 ---
 
-### Step 5 — Start Airflow + dbt
+### Step 4 — Airflow + dbt
 
 ```bash
 make up-airflow
 ```
 
-Open Airflow at **http://localhost:8081** (admin / admin123).
+Open Airflow at **http://localhost:8085** (admin / admin123).
 
-The DAG `tpcds_dbt_pipeline` runs daily at 23:00 and executes Bronze → Silver → Gold transformations. To trigger manually:
+The DAG `thelook_dbt_pipeline` runs daily at 23:00 and executes Bronze → Silver → Gold transformations via Astronomer Cosmos. To trigger manually:
 
 ```bash
-docker exec tpcds-airflow airflow dags trigger tpcds_dbt_pipeline
+docker exec tpcds-airflow airflow dags trigger thelook_dbt_pipeline
+```
+
+---
+
+## Part 2 — Start Stream Data
+
+### Step 1 — Run the simulator
+
+The simulator runs as a local Python process and connects to PostgreSQL on `localhost:5432`. It creates the schema and seeds initial data automatically on first run.
+
+```bash
+make simulator-start   # start in background
+make simulator-stop    # stop
+```
+
+---
+
+### Step 2 — Start Spark Streaming
+
+Open Jupyter at **http://localhost:8888**, navigate to `work/stream_processor.ipynb` and run all cells.
+
+- **Cell 1** waits for all services (PostgreSQL, MinIO, Kafka, Spark) and Kafka topics to be ready before proceeding
+- **Cell 2** starts 6 Spark Streaming jobs (one per table), registers Delta tables in the Hive Metastore, and keeps streams alive
+
+> Interrupt the kernel to stop streaming.
+
+Alternatively, via Makefile:
+
+```bash
+make stream-start    # submit via spark-submit
+make stream-status   # check if running
+make stream-logs     # tail live logs
+make stream-stop     # stop the job
 ```
 
 ---
@@ -143,74 +184,41 @@ docker exec tpcds-airflow airflow dags trigger tpcds_dbt_pipeline
 | Debezium REST API | http://localhost:8083 | — |
 | Trino UI | http://localhost:8080 | — |
 | Apache Superset | http://localhost:8088 | admin / admin123 |
-| Apache Airflow | http://localhost:8081 | admin / admin123 |
+| Apache Airflow | http://localhost:8085 | admin / admin123 |
 
 ---
 
 ## dbt Models
 
-### Bronze — views on raw Delta tables
-`bronze_store_sales`, `bronze_web_sales`, `bronze_catalog_sales`, `bronze_inventory`,
-`bronze_store_returns`, `bronze_web_returns`, `bronze_catalog_returns`
+### Bronze — ephemeral CTEs on raw Delta tables
+`bronze_orders`, `bronze_order_items`, `bronze_events`
 
-### Silver — cleaned + dimension-enriched tables
-`silver_store_sales`, `silver_web_sales`, `silver_catalog_sales`, `silver_inventory`,
-`silver_store_returns`, `silver_web_returns`, `silver_catalog_returns`
+Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest state per record.
 
-### Gold — business metrics
+### Silver — enriched tables (materialized as Delta tables)
+
 | Model | Description |
 |---|---|
-| `gold_sales_by_channel` | Daily revenue & transactions by store / web / catalog |
-| `gold_product_performance` | Revenue, profit, margin per product |
-| `gold_customer_segments` | Customer LTV with VIP / High / Regular / Low segmentation |
-| `gold_inventory_status` | Stock levels & out-of-stock rates by category & warehouse |
-| `gold_return_rate` | Return rate % by channel, category, and brand |
-| `gold_shipping_analysis` | Orders & returns by shipping mode and carrier |
-| `gold_promotion_effectiveness` | Promo ROI, discount rate, profit margin |
-| `gold_geographic_analysis` | Revenue & return rate by country / state / city |
-| `gold_call_center_analysis` | Call center performance + top return reasons |
+| `silver_order_items` | Order items joined with products, orders, users, and distribution centers |
+| `silver_orders` | Orders enriched with user info |
+| `silver_events` | Web events enriched with user profile |
 
----
+### Gold — business metrics
 
-## Useful Commands
-
-```bash
-# Start / stop everything
-make up
-make down
-
-# Check running containers
-make ps
-
-# Follow logs
-make logs-core
-make logs-kafka
-make logs-superset
-make logs-airflow
-
-# Open Trino CLI
-docker exec -it tpcds-trino trino --catalog delta --schema bronze
-
-# Trigger DAG manually
-docker exec tpcds-airflow airflow dags trigger tpcds_dbt_pipeline
-
-# Run dbt manually
-docker exec tpcds-airflow \
-  dbt run \
-  --project-dir /opt/airflow/dbt \
-  --profiles-dir /opt/airflow/dbt
-
-# View simulator logs
-docker logs -f tpcds-simulator
-```
+| Model | Description |
+|---|---|
+| `gold_sales_by_category` | Revenue and margin by product category, department, and brand |
+| `gold_order_funnel` | Order volume by status with average fulfillment time |
+| `gold_customer_segments` | Purchase behavior by country, gender, age group, and traffic source |
+| `gold_product_performance` | Revenue, return rate, and cancel rate per product |
 
 ---
 
 ## Troubleshooting
 
-**Debezium connector fails**
-- Check PostgreSQL: `docker exec tpcds-postgres psql -U admin -d tpcds -c "SHOW wal_level;"`
-- Should return `logical`. If not, restart PostgreSQL with the correct `wal_level` setting.
+**Debezium connector fails to start**
+- Ensure the simulator has run at least once (creates the tables Debezium needs to track)
+- Check WAL level: `docker exec tpcds-postgres psql -U admin -d tpcds -c "SHOW wal_level;"` — should return `logical`
 
 **Spark cannot write to MinIO**
 - Verify MinIO is running: http://localhost:9001
@@ -220,11 +228,20 @@ docker logs -f tpcds-simulator
 - MariaDB may need ~30s on first boot. Check: `docker logs tpcds-hive-metastore`
 
 **Trino cannot read Delta tables**
-- Run `stream_processor.py` first — it registers tables in the metastore.
-- Verify: `SHOW TABLES IN delta.bronze` in Trino UI.
+- Run stream processor first — it registers tables in the metastore
+- Verify: `SHOW TABLES IN delta.bronze` in Trino CLI
+
+**Trino runs out of memory on large queries**
+- Trino is configured with 4 GB heap (`trino/conf/jvm.config`)
+- Reduce concurrent queries or add `LIMIT` when exploring large tables interactively
+
+**Airflow webserver not ready**
+- `airflow-init` must complete before webserver and scheduler start
+- Check: `docker logs tpcds-airflow-init`
+- If init fails: `make down-airflow && make up-airflow`
 
 ---
 
 ## License
 
-Educational and portfolio use. TPC-DS benchmark specification © [TPC](https://www.tpc.org/).
+Educational and portfolio use. TheLook dataset © Google LLC (Apache 2.0).

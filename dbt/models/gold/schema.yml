@@ -1,69 +1,104 @@
 version: 2
 
 models:
-  - name: gold_sales_by_channel
-    description: "Daily revenue and transaction counts aggregated by sales channel"
+  - name: gold_sales_by_category
+    description: "Revenue and margin aggregated by product category, department and brand"
     columns:
-      - name: sale_date
-        tests: [not_null]
-      - name: channel
+      - name: product_category
         tests:
-          - not_null
-          - accepted_values:
-              values: ['store', 'web', 'catalog']
-      - name: total_transactions
-        tests: [not_null]
+          - not_null:
+              severity: error
+      - name: product_department
+        tests:
+          - not_null:
+              severity: error
+      - name: total_orders
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000000
+              severity: error
       - name: total_revenue
-        tests: [not_null]
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000000
+              severity: error
+      - name: margin_pct
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+              severity: error
 
-  - name: gold_product_performance
-    description: "Revenue, profit, and margin per product item"
+  - name: gold_order_funnel
+    description: "Order volume and timing by status (Processing → Shipped → Delivered → Returned/Cancelled)"
     columns:
-      - name: item_sk
-        tests: [not_null, unique]
-      - name: product_name
-        tests: [not_null]
-      - name: total_revenue
-        tests: [not_null]
+      - name: order_status
+        tests:
+          - not_null:
+              severity: error
+          - accepted_values:
+              values: ['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']
+              severity: error
+      - name: total_orders
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000000
+              severity: error
 
   - name: gold_customer_segments
-    description: "Customer lifetime value with VIP / High / Regular / Low segmentation"
+    description: "Customer purchase behavior by demographics (country, gender, age, traffic source)"
     columns:
-      - name: customer_sk
-        tests: [not_null, unique]
-      - name: total_spend
-        tests: [not_null]
-      - name: customer_segment
+      - name: country
         tests:
-          - not_null
-          - accepted_values:
-              values: ['VIP', 'High Value', 'Regular', 'Low Value']
-
-  - name: gold_inventory_status
-    description: "Stock levels and out-of-stock rates by category and warehouse"
-    columns:
-      - name: item_sk
-        tests: [not_null]
-      - name: warehouse_sk
-        tests: [not_null]
-
-  - name: gold_return_rate
-    description: "Return rate percentage by channel, category, and brand"
-    columns:
-      - name: channel
+          - not_null:
+              severity: error
+      - name: gender
         tests:
-          - not_null
           - accepted_values:
-              values: ['store', 'web', 'catalog']
+              values: ['M', 'F', 'Other']
+              severity: error
+      - name: total_customers
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000000
+              severity: error
+      - name: total_revenue
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000000
+              severity: error
 
-  - name: gold_shipping_analysis
-    description: "Orders and returns broken down by shipping mode and carrier"
-
-  - name: gold_promotion_effectiveness
-    description: "Promotion ROI, discount rate, and profit margin per campaign"
-
-  - name: gold_geographic_analysis
-    description: "Revenue and return rate by country, state, and city"
-
-  - name: gold_call_center_analysis
-    description: "Call center performance metrics and top return reasons"
+  - name: gold_product_performance
+    description: "Product-level revenue, return rate, and cancel rate"
+    columns:
+      - name: product_id
+        tests:
+          - not_null:
+              severity: error
+      - name: product_name
+        tests:
+          - not_null:
+              severity: error
+      - name: total_revenue
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000000
+              severity: error
+      - name: return_rate
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+              severity: error
+      - name: cancel_rate
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+              severity: error
