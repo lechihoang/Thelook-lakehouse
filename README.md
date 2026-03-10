@@ -32,7 +32,7 @@ TheLook Simulator (Python)
 | Source DB | PostgreSQL | 15 |
 | CDC | Debezium | 2.5 |
 | Message Broker | Kafka (Confluent) | 7.5.0 |
-| Stream Processing | Spark Structured Streaming | 3.5.0 |
+| Stream Processing | Spark Structured Streaming | 3.5.3 |
 | Table Format | Delta Lake | 3.2.0 |
 | Object Storage | MinIO | latest |
 | Metastore | Hive Metastore + MariaDB | 3.0 / 10.5 |
@@ -95,15 +95,7 @@ Starts: PostgreSQL, MinIO, MariaDB, Hive Metastore, Spark cluster, Jupyter Noteb
 make up-kafka
 ```
 
-Register the Debezium connector (run once after Kafka is healthy):
-
-```bash
-curl -s -X POST http://localhost:8083/connectors \
-  -H "Content-Type: application/json" \
-  -d @kafka/conf/register-tpcds-connector.json
-```
-
-Verify:
+The Debezium connector is registered automatically on startup. To verify:
 
 ```bash
 curl -s http://localhost:8083/connectors/thelook-connector/status | python3 -m json.tool
@@ -118,9 +110,7 @@ make up-trino
 make up-superset
 ```
 
-Open Superset at **http://localhost:8088** (admin / admin123):
-1. **Settings → Database Connections → + Database**
-2. Choose **Trino**, connection string: `trino://trino@trino:8080/delta`
+Superset is available at **http://localhost:8088** (admin / admin123). The Trino database connection is registered automatically on startup.
 
 ---
 
@@ -135,40 +125,41 @@ Open Airflow at **http://localhost:8085** (admin / admin123).
 The DAG `thelook_dbt_pipeline` runs daily at 23:00 and executes Bronze → Silver → Gold transformations via Astronomer Cosmos. To trigger manually:
 
 ```bash
-docker exec tpcds-airflow airflow dags trigger thelook_dbt_pipeline
+docker exec thelook-airflow airflow dags trigger thelook_dbt_pipeline
 ```
 
 ---
 
 ## Part 2 — Start Stream Data
 
-### Step 1 — Run the simulator
+Open Jupyter at **http://localhost:8888** (password: `admin123`), navigate to `work/stream_processor.ipynb` and run all cells.
 
-The simulator runs as a local Python process and connects to PostgreSQL on `localhost:5432`. It creates the schema and seeds initial data automatically on first run.
+| Cell | Description |
+|---|---|
+| **1 — Health Checks** | Wait for all services to be ready (PostgreSQL, MinIO, Kafka, Spark) |
+| **2 — Simulator** | Start the simulator in background, wait for Debezium to create Kafka topics |
+| **3 — Spark Streaming** | Start 6 streams (one per table), register Delta tables in Hive Metastore |
+
+> Interrupt the kernel (■) to stop everything — the simulator will be terminated automatically.
+
+Once data is flowing into the bronze layer, trigger the dbt pipeline to build silver and gold tables:
 
 ```bash
-make simulator-start   # start in background
-make simulator-stop    # stop
+docker exec thelook-airflow airflow dags trigger thelook_dbt_pipeline
 ```
 
----
+Or let it run automatically on its daily schedule (23:00).
 
-### Step 2 — Start Spark Streaming
-
-Open Jupyter at **http://localhost:8888**, navigate to `work/stream_processor.ipynb` and run all cells.
-
-- **Cell 1** waits for all services (PostgreSQL, MinIO, Kafka, Spark) and Kafka topics to be ready before proceeding
-- **Cell 2** starts 6 Spark Streaming jobs (one per table), registers Delta tables in the Hive Metastore, and keeps streams alive
-
-> Interrupt the kernel to stop streaming.
-
-Alternatively, via Makefile:
+To run individually via Makefile:
 
 ```bash
-make stream-start    # submit via spark-submit
-make stream-status   # check if running
-make stream-logs     # tail live logs
-make stream-stop     # stop the job
+make simulator-start   # chạy simulator trên host (localhost:5432)
+make simulator-stop
+
+make stream-start      # submit spark-submit
+make stream-status
+make stream-logs
+make stream-stop
 ```
 
 ---
@@ -195,7 +186,7 @@ make stream-stop     # stop the job
 
 Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest state per record.
 
-### Silver — enriched tables (materialized as Delta tables)
+### Silver — enriched tables (incremental merge)
 
 | Model | Description |
 |---|---|
@@ -203,7 +194,7 @@ Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest stat
 | `silver_orders` | Orders enriched with user info |
 | `silver_events` | Web events enriched with user profile |
 
-### Gold — business metrics
+### Gold — business metrics (incremental delete+insert)
 
 | Model | Description |
 |---|---|
@@ -218,14 +209,14 @@ Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest stat
 
 **Debezium connector fails to start**
 - Ensure the simulator has run at least once (creates the tables Debezium needs to track)
-- Check WAL level: `docker exec tpcds-postgres psql -U admin -d tpcds -c "SHOW wal_level;"` — should return `logical`
+- Check WAL level: `docker exec thelook-postgres psql -U admin -d thelook -c "SHOW wal_level;"` — should return `logical`
 
 **Spark cannot write to MinIO**
 - Verify MinIO is running: http://localhost:9001
 - Check `MINIO_ENDPOINT` in `.env` uses `http://` not `https://`
 
 **Hive Metastore fails to start**
-- MariaDB may need ~30s on first boot. Check: `docker logs tpcds-hive-metastore`
+- MariaDB may need ~30s on first boot. Check: `docker logs thelook-hive-metastore`
 
 **Trino cannot read Delta tables**
 - Run stream processor first — it registers tables in the metastore
@@ -237,7 +228,7 @@ Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest stat
 
 **Airflow webserver not ready**
 - `airflow-init` must complete before webserver and scheduler start
-- Check: `docker logs tpcds-airflow-init`
+- Check: `docker logs thelook-airflow-init`
 - If init fails: `make down-airflow && make up-airflow`
 
 ---

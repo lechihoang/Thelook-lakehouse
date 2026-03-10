@@ -1,4 +1,8 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    unique_key='event_id',
+    incremental_strategy='delete+insert'
+) }}
 
 SELECT
     e.id                                AS event_id,
@@ -21,6 +25,9 @@ SELECT
     u.gender                            AS customer_gender,
     u.age                               AS customer_age,
     u.country                           AS customer_country,
+    u.latitude                          AS customer_lat,
+    u.longitude                         AS customer_lon,
+    CAST(u.created_at AS varchar)       AS user_registered_at,
     u.traffic_source                    AS user_traffic_source,
     CASE WHEN e.user_id IS NULL THEN TRUE ELSE FALSE END AS is_ghost,
     -- Metadata
@@ -28,3 +35,6 @@ SELECT
 
 FROM {{ ref('bronze_events') }} e
 LEFT JOIN postgresql.public.users u ON e.user_id = u.id
+{% if is_incremental() %}
+WHERE e.event_ts_ms > (SELECT MAX(event_ts_ms) FROM {{ this }})
+{% endif %}

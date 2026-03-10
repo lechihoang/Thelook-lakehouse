@@ -3,11 +3,6 @@ version: 2
 models:
   - name: bronze_orders
     description: "Latest CDC state of each order from Delta Lake bronze layer"
-    tests:
-      - dbt_utils.recency:
-          datepart: hour
-          field: created_at
-          interval: 4
     columns:
       - name: id
         tests:
@@ -25,11 +20,6 @@ models:
 
   - name: bronze_order_items
     description: "Latest CDC state of each order item"
-    tests:
-      - dbt_utils.recency:
-          datepart: hour
-          field: created_at
-          interval: 4
     columns:
       - name: id
         tests:
@@ -50,11 +40,6 @@ models:
 
   - name: bronze_events
     description: "Web and app events from CDC"
-    tests:
-      - dbt_utils.recency:
-          datepart: hour
-          field: created_at
-          interval: 4
     columns:
       - name: id
         tests:

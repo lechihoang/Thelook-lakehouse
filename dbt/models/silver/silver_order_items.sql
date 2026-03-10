@@ -1,4 +1,8 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    unique_key='order_item_id',
+    incremental_strategy='delete+insert'
+) }}
 
 SELECT
     oi.id                               AS order_item_id,
@@ -16,12 +20,18 @@ SELECT
     oi.quantity,
     oi.sale_price,
     oi.quantity * oi.sale_price         AS revenue,
+    CAST(oi.created_at AS varchar)        AS item_created_at,
+    CAST(oi.shipped_at AS varchar)        AS item_shipped_at,
+    CAST(oi.delivered_at AS varchar)      AS item_delivered_at,
+    CAST(oi.returned_at AS varchar)       AS item_returned_at,
+    CAST(oi.cancelled_at AS varchar)      AS item_cancelled_at,
     -- Product
     oi.product_id,
     p.name                              AS product_name,
     p.category                          AS product_category,
     p.brand                             AS product_brand,
     p.department                        AS product_department,
+    p.sku                               AS product_sku,
     p.cost                              AS product_cost,
     p.retail_price                      AS product_retail_price,
     oi.sale_price - p.cost              AS gross_margin,
@@ -36,6 +46,9 @@ SELECT
     u.country                           AS customer_country,
     u.state                             AS customer_state,
     u.city                              AS customer_city,
+    u.latitude                          AS customer_lat,
+    u.longitude                         AS customer_lon,
+    CAST(u.created_at AS varchar)       AS user_registered_at,
     u.traffic_source,
     -- Metadata
     oi.event_ts_ms
@@ -47,3 +60,6 @@ LEFT JOIN postgresql.public.dist_centers   dc  ON p.distribution_center_id = dc.
 LEFT JOIN postgresql.public.users          u   ON o.user_id        = u.id
 
 WHERE oi.order_id IS NOT NULL
+{% if is_incremental() %}
+    AND oi.event_ts_ms > (SELECT MAX(event_ts_ms) FROM {{ this }})
+{% endif %}

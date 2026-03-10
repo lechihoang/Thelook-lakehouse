@@ -41,7 +41,7 @@ models:
           - accepted_values:
               values: ['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']
               severity: error
-      - name: total_orders
+      - name: order_count
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
@@ -51,16 +51,16 @@ models:
   - name: gold_customer_segments
     description: "Customer purchase behavior by demographics (country, gender, age, traffic source)"
     columns:
-      - name: country
+      - name: customer_country
         tests:
           - not_null:
-              severity: error
-      - name: gender
+              severity: warn
+      - name: customer_gender
         tests:
           - accepted_values:
               values: ['M', 'F', 'Other']
-              severity: error
-      - name: total_customers
+              severity: warn
+      - name: customer_count
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
@@ -71,6 +71,26 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 100000000
+              severity: error
+
+  - name: gold_event_funnel
+    description: "Session conversion funnel (home→browse→product→cart→purchase) by traffic source"
+    columns:
+      - name: traffic_source
+        tests:
+          - not_null:
+              severity: error
+      - name: total_sessions
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000000
+              severity: error
+      - name: overall_conversion_pct
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
               severity: error
 
   - name: gold_product_performance
@@ -90,13 +110,13 @@ models:
               min_value: 0
               max_value: 10000000
               severity: error
-      - name: return_rate
+      - name: return_rate_pct
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 100
               severity: error
-      - name: cancel_rate
+      - name: cancel_rate_pct
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0

@@ -13,7 +13,7 @@ services:
   # ─── PostgreSQL (TPC-DS source) ─────────────────────────────
   postgres:
     image: postgres:15
-    container_name: tpcds-postgres
+    container_name: thelook-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -27,7 +27,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d
     networks:
       - data_network
     healthcheck:
@@ -39,7 +38,7 @@ services:
   # ─── MinIO (S3-compatible object storage) ───────────────────
   minio:
     image: minio/minio:latest
-    container_name: tpcds-minio
+    container_name: thelook-minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -60,7 +59,7 @@ services:
   # ─── MinIO bucket init ───────────────────────────────────────
   minio-init:
     image: minio/mc:latest
-    container_name: tpcds-minio-init
+    container_name: thelook-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -76,7 +75,7 @@ services:
   # ─── MariaDB (Hive Metastore backend) ───────────────────────
   mariadb:
     image: mariadb:10.5.16
-    container_name: tpcds-mariadb
+    container_name: thelook-mariadb
     environment:
       MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MARIADB_DATABASE}
@@ -100,7 +99,7 @@ services:
     build:
       context: hive-metastore
       dockerfile: Dockerfile
-    container_name: tpcds-hive-metastore
+    container_name: thelook-hive-metastore
     depends_on:
       mariadb:
         condition: service_healthy
@@ -116,7 +115,7 @@ services:
   # ─── Spark Master ────────────────────────────────────────────
   spark-master:
     <<: *spark-common
-    container_name: tpcds-spark-master
+    container_name: thelook-spark-master
     command:
       - /opt/spark/bin/spark-class
       - org.apache.spark.deploy.master.Master
@@ -133,7 +132,7 @@ services:
   # ─── Spark Worker ────────────────────────────────────────────
   spark-worker:
     <<: *spark-common
-    container_name: tpcds-spark-worker
+    container_name: thelook-spark-worker
     depends_on:
       - spark-master
     environment:
@@ -147,7 +146,7 @@ services:
   # ─── Spark Thrift Server ─────────────────────────────────────
   spark-thrift-server:
     <<: *spark-common
-    container_name: tpcds-spark-thrift
+    container_name: thelook-spark-thrift
     depends_on:
       - spark-master
       - hive-metastore
@@ -174,11 +173,12 @@ services:
     build:
       context: notebook
       dockerfile: Dockerfile
-    container_name: tpcds-notebook
+    container_name: thelook-notebook
     environment:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       MLFLOW_S3_ENDPOINT_URL: ${MINIO_ENDPOINT}
+      JUPYTER_TOKEN: admin123
     ports:
       - "8888:8888"
       - "4040:4040"

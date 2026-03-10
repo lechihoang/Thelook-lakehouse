@@ -1,7 +1,7 @@
 services:
   airflow-db:
     image: postgres:15
-    container_name: tpcds-airflow-db
+    container_name: thelook-airflow-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow123
@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tpcds-airflow-init
+    container_name: thelook-airflow-init
     env_file:
       - .env
     environment:
@@ -37,10 +37,11 @@ services:
           --username "${AIRFLOW_ADMIN_USER}" \
           --password "${AIRFLOW_ADMIN_PASSWORD}" \
           --firstname Admin --lastname User --role Admin \
-          --email admin@tpcds.com 2>/dev/null || \
+          --email admin@thelook.com 2>/dev/null || \
         airflow users set-password \
           --username "${AIRFLOW_ADMIN_USER}" \
           --password "${AIRFLOW_ADMIN_PASSWORD}"
+        dbt deps --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt
     depends_on:
       airflow-db:
         condition: service_healthy
@@ -52,7 +53,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tpcds-airflow-scheduler
+    container_name: thelook-airflow-scheduler
     command: scheduler
     env_file:
       - .env
@@ -77,7 +78,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tpcds-airflow
+    container_name: thelook-airflow
     command: webserver
     ports:
       - "8085:8080"

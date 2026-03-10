@@ -1,6 +1,5 @@
 {{ config(materialized='table') }}
 
--- Revenue and margin by product category and department
 SELECT
     product_category,
     product_department,

@@ -1,6 +1,5 @@
 {{ config(materialized='table') }}
 
--- Customer segments by demographics and purchase behavior
 SELECT
     customer_country,
     customer_gender,

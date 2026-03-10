@@ -1,4 +1,8 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    unique_key='order_id',
+    incremental_strategy='delete+insert'
+) }}
 
 SELECT
     o.id                                AS order_id,
@@ -18,9 +22,15 @@ SELECT
     u.country                           AS customer_country,
     u.state                             AS customer_state,
     u.city                              AS customer_city,
+    u.latitude                          AS customer_lat,
+    u.longitude                         AS customer_lon,
+    CAST(u.created_at AS varchar)       AS user_registered_at,
     u.traffic_source,
     -- Metadata
     o.event_ts_ms
 
 FROM {{ ref('bronze_orders') }} o
 LEFT JOIN postgresql.public.users u ON o.user_id = u.id
+{% if is_incremental() %}
+WHERE o.event_ts_ms > (SELECT MAX(event_ts_ms) FROM {{ this }})
+{% endif %}

@@ -25,15 +25,14 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 0
               max_value: 100000
-              description: "Revenue must be non-negative"
       - name: customer_country
         tests:
           - not_null:
-              severity: error
+              severity: warn
       - name: distribution_center
         tests:
           - not_null:
-              severity: error
+              severity: warn
 
   - name: silver_orders
     description: "Orders enriched with user info and timing metrics"

@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tpcds-superset
+    container_name: thelook-superset
     env_file:
       - .env
     ports:

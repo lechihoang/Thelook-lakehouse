@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get purge -y gcc && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 COPY superset-init.sh /superset-init.sh
+COPY conf/databases.yaml /app/conf/databases.yaml
 RUN chmod +x /superset-init.sh
 
 USER superset

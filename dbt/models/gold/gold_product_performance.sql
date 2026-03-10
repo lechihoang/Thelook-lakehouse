@@ -1,6 +1,5 @@
 {{ config(materialized='table') }}
 
--- Top product performance: revenue, returns, and conversion
 WITH sales AS (
     SELECT
         product_id,

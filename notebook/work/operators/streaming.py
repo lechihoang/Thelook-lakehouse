@@ -10,6 +10,7 @@ class SparkStreaming:
         spark = (
             SparkSession.builder
             .appName(app_name)
+            .master("spark://spark-master:7077")
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
             .config("spark.hadoop.fs.s3a.endpoint",               MINIO_ENDPOINT)
@@ -20,6 +21,8 @@ class SparkStreaming:
             .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
             .config("spark.hadoop.hive.metastore.uris", "thrift://hive-metastore:9083")
             .config("spark.streaming.backpressure.enabled", "true")
+            .config("spark.databricks.delta.optimizeWrite.enabled", "true")
+            .config("spark.databricks.delta.autoCompact.enabled",   "true")
             .enableHiveSupport()
             .getOrCreate()
         )

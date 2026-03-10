@@ -3,7 +3,7 @@ version: "3.9"
 services:
   trino:
     image: trinodb/trino:400
-    container_name: tpcds-trino
+    container_name: thelook-trino
     env_file:
       - .env
     ports:

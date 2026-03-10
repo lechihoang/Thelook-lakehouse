@@ -22,8 +22,8 @@ models:
       +materialized: ephemeral
     silver:
       +schema: silver
-      +materialized: table
-      +on_table_exists: drop
+      +materialized: incremental
+      +incremental_strategy: delete+insert
     gold:
       +schema: gold
       +materialized: table
