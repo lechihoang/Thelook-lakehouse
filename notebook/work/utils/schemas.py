@@ -1,6 +1,6 @@
 from pyspark.sql.types import (
     StructType, StructField,
-    StringType, LongType, DoubleType, IntegerType,
+    StringType, LongType, DoubleType, IntegerType, DecimalType,
 )
 
 def _debezium(after_schema: StructType) -> StructType:
@@ -48,7 +48,7 @@ order_items = _debezium(StructType([
     StructField("product_id",   LongType()),
     StructField("status",       StringType()),
     StructField("quantity",     IntegerType()),
-    StructField("sale_price",   DoubleType()),
+    StructField("sale_price",   DecimalType(18, 2)),
     StructField("created_at",   StringType()),
     StructField("updated_at",   StringType()),
     StructField("shipped_at",   StringType()),
@@ -75,11 +75,11 @@ events = _debezium(StructType([
 
 products = _debezium(StructType([
     StructField("id",                     LongType()),
-    StructField("cost",                   DoubleType()),
+    StructField("cost",                   DecimalType(18, 2)),
     StructField("category",               StringType()),
     StructField("name",                   StringType()),
     StructField("brand",                  StringType()),
-    StructField("retail_price",           DoubleType()),
+    StructField("retail_price",           DecimalType(18, 2)),
     StructField("department",             StringType()),
     StructField("sku",                    StringType()),
     StructField("distribution_center_id", LongType()),

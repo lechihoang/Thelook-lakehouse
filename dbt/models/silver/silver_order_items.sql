@@ -1,7 +1,8 @@
 {{ config(
     materialized='incremental',
     unique_key='order_item_id',
-    incremental_strategy='delete+insert'
+    incremental_strategy='delete+insert',
+    on_schema_change='append_new_columns'
 ) }}
 
 SELECT
@@ -54,10 +55,10 @@ SELECT
     oi.event_ts_ms
 
 FROM {{ ref('bronze_order_items') }} oi
-LEFT JOIN {{ ref('bronze_orders') }}       o   ON oi.order_id      = o.id
-LEFT JOIN postgresql.public.products       p   ON oi.product_id    = p.id
-LEFT JOIN postgresql.public.dist_centers   dc  ON p.distribution_center_id = dc.id
-LEFT JOIN postgresql.public.users          u   ON o.user_id        = u.id
+LEFT JOIN {{ ref('bronze_orders') }}       o   ON oi.order_id               = o.id
+LEFT JOIN {{ ref('bronze_products') }}     p   ON oi.product_id             = p.id
+LEFT JOIN {{ ref('bronze_dist_centers') }} dc  ON p.distribution_center_id = dc.id
+LEFT JOIN {{ ref('bronze_users') }}        u   ON o.user_id                 = u.id
 
 WHERE oi.order_id IS NOT NULL
 {% if is_incremental() %}

@@ -1,7 +1,8 @@
 {{ config(
     materialized='incremental',
     unique_key='event_id',
-    incremental_strategy='delete+insert'
+    incremental_strategy='delete+insert',
+    on_schema_change='append_new_columns'
 ) }}
 
 SELECT
@@ -34,7 +35,7 @@ SELECT
     e.event_ts_ms
 
 FROM {{ ref('bronze_events') }} e
-LEFT JOIN postgresql.public.users u ON e.user_id = u.id
+LEFT JOIN {{ ref('bronze_users') }} u ON e.user_id = u.id
 {% if is_incremental() %}
 WHERE e.event_ts_ms > (SELECT MAX(event_ts_ms) FROM {{ this }})
 {% endif %}
