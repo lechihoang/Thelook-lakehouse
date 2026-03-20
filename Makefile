@@ -26,7 +26,7 @@ help:
 
 # ─── Build ────────────────────────────────────────────────────
 build-dbt:
-	docker build -t $(DBT_IMAGE) ./dbt
+	docker build -t $(DBT_IMAGE) ./infra/dbt
 
 # ─── Up ─────────────────────────────────────────────────────
 up-core:

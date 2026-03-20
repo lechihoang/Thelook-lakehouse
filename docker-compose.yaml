@@ -2,7 +2,7 @@ version: "3.9"
 
 x-airflow-common: &airflow-common
   build:
-    context: ./airflow
+    context: ./infra/airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -19,9 +19,9 @@ x-airflow-common: &airflow-common
     SPARK_JARS_DIR: /opt/spark/jars
     AWS_JAVA_V1_DISABLE_DEPRECATION_ANNOUNCEMENT: "true"
   volumes:
-    - ./airflow/dags:/opt/airflow/dags
-    - ./airflow/logs:/opt/airflow/logs
-    - ./dbt:/opt/airflow/dbt
+    - ./infra/airflow/dags:/opt/airflow/dags
+    - ./infra/airflow/logs:/opt/airflow/logs
+    - ./infra/dbt:/opt/airflow/dbt
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     airflow-db:
@@ -121,7 +121,7 @@ services:
   # ─── Hive Metastore ───────────────────────────────────────
   hive-metastore:
     build:
-      context: ./hive-metastore
+      context: ./infra/hive-metastore
     container_name: thelook-hive-metastore
     depends_on:
       mariadb:
@@ -138,7 +138,7 @@ services:
   # ─── Kafka ────────────────────────────────────────────────
   kafka:
     build:
-      context: ./kafka
+      context: ./infra/kafka
     container_name: thelook-kafka
     ports:
       - "9092:9092"
@@ -165,7 +165,7 @@ services:
   # ─── Schema Registry ──────────────────────────────────────
   schema-registry:
     build:
-      context: ./schema-registry
+      context: ./infra/schema-registry
     container_name: thelook-schema-registry
     depends_on:
       kafka:
@@ -183,7 +183,7 @@ services:
   # ─── Debezium ─────────────────────────────────────────────
   debezium:
     build:
-      context: ./debezium
+      context: ./infra/debezium
     container_name: thelook-debezium
     depends_on:
       kafka:
@@ -205,7 +205,7 @@ services:
   # ─── Spark Master ──────────────────────────────────────────
   spark-master:
     build:
-      context: ./spark
+      context: ./infra/spark
     container_name: thelook-spark-master
     environment:
       - SPARK_MODE=master
@@ -240,7 +240,7 @@ services:
   # ─── Spark Worker ─────────────────────────────────────────
   spark-worker:
     build:
-      context: ./spark
+      context: ./infra/spark
     container_name: thelook-spark-worker
     environment:
       - SPARK_MODE=worker
@@ -271,12 +271,12 @@ services:
   # ─── Trino ────────────────────────────────────────────────
   trino:
     build:
-      context: ./trino
+      context: ./infra/trino
     container_name: thelook-trino
     ports:
       - "8080:8080"
     volumes:
-      - ./trino/conf:/etc/trino
+      - ./infra/trino/conf:/etc/trino
       - trino-data:/var/trino/data
     user: "0:0"
     depends_on:
@@ -290,7 +290,7 @@ services:
   # ─── Superset ─────────────────────────────────────────────
   superset:
     build:
-      context: ./superset
+      context: ./infra/superset
     container_name: thelook-superset
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
@@ -300,7 +300,7 @@ services:
     ports:
       - "8089:8088"
     volumes:
-      - ./superset/conf/superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ./infra/superset/conf/superset_config.py:/app/pythonpath/superset_config.py:ro
     networks:
       - data_network
     profiles: [core]
@@ -308,7 +308,7 @@ services:
   # ─── JupyterLab ───────────────────────────────────────────
   jupyter-lab:
     build:
-      context: ./jupyter-lab
+      context: ./infra/jupyter-lab
     container_name: thelook-jupyter
     ports:
       - "8888:8888"
@@ -329,7 +329,7 @@ services:
   # ─── Data Generator ───────────────────────────────────────
   data-generator:
     build:
-      context: ./data-generator
+      context: ./infra/data-generator
     container_name: thelook-generator
     environment:
       PG_DSN: host=postgres port=5432 dbname=${POSTGRES_DB} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD}

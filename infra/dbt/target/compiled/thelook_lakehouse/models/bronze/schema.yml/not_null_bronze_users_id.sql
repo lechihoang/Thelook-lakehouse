@@ -1,0 +1,21 @@
+
+    
+    
+
+
+
+with __dbt__cte__bronze_users as (
+-- Latest state of each user (deduplicate CDC updates, e.g. address changes)
+SELECT *
+FROM (
+    SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY id ORDER BY event_ts_ms DESC) AS rn
+    FROM "delta"."bronze"."users"
+    WHERE operation != 'd'
+)
+WHERE rn = 1
+) select id
+from __dbt__cte__bronze_users
+where id is null
+
+
