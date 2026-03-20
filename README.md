@@ -1,26 +1,26 @@
 # TheLook E-commerce Lakehouse
 
-A streaming data lakehouse built on the **TheLook E-commerce** dataset, following the **Medallion Architecture** (Bronze → Silver → Gold).
+A streaming data lakehouse built on the **TheLook E-commerce** dataset, following the **Medallion Architecture** (Staging → Intermediate → Mart).
 
 ---
 
 ## Architecture
 
 ```
-TheLook Simulator (Python)
-        │ INSERT / UPDATE via psycopg2
-        ▼
-   PostgreSQL 15  ─── Debezium CDC (pgoutput) ───▶  Kafka
-                                                        │ Spark Structured Streaming
-                                                        ▼
-                                                   MinIO (Delta Lake)
-                                                   ├── bronze/   raw CDC events
-                                                   ├── silver/   enriched tables
-                                                   └── gold/     business metrics
-                                                        │
-                                                   ┌────┴────┐
-                                                  Trino    Airflow + dbt
-                                                  Superset
+PostgreSQL  ── CDC (pgoutput) ──▶ Kafka ──▶ Schema Registry (Avro)
+     │                                     │
+     │                              Spark Structured Streaming
+     │                                     │
+     └─────────────────────────────────────▶ MinIO (Delta Lake)
+                                               │
+                              ┌────────────────┼────────────────┐
+                              │                │                │
+                          staging/          intermediate/       mart/
+                          raw CDC           enriched           metrics
+                                               │
+                                          ┌────┴────┐
+                                         Trino    Airflow + dbt
+                                         Superset
 ```
 
 ---
@@ -30,15 +30,17 @@ TheLook Simulator (Python)
 | Layer | Technology | Version |
 |---|---|---|
 | Source DB | PostgreSQL | 15 |
-| CDC | Debezium | 2.5 |
-| Message Broker | Kafka (Confluent) | 7.5.0 |
-| Stream Processing | Spark Structured Streaming | 3.5.3 |
-| Table Format | Delta Lake | 3.2.0 |
+| CDC | Debezium | 3.0 |
+| Message Broker | Kafka (KRaft) | 3.9 |
+| Schema Registry | Confluent | 8.0 |
+| Stream Processing | Spark Structured Streaming | 3.5.6 |
+| Table Format | Delta Lake | 3.0 |
 | Object Storage | MinIO | latest |
-| Metastore | Hive Metastore + MariaDB | 3.0 / 10.5 |
-| Query Engine | Trino | 400 |
-| Visualization | Apache Superset | latest |
-| Orchestration | Airflow + dbt-trino | 2.9.2 / 1.7.0 |
+| Metastore | Hive Metastore + MariaDB | 4.1 / 10.5 |
+| Query Engine | Trino | latest |
+| Visualization | Apache Superset | 3.1 |
+| Orchestration | Airflow (LocalExecutor) + dbt | 3.0 / 1.7 |
+| Data Generator | Python + Confluent Kafka | — |
 
 ---
 
@@ -46,120 +48,41 @@ TheLook Simulator (Python)
 
 Synthetic e-commerce dataset modelled after the [Google BigQuery public dataset](https://console.cloud.google.com/marketplace/product/bigquery-public-data/thelook-ecommerce).
 
-**6 tables:**
+**6 source tables:**
 
 | Table | Role | Description |
 |---|---|---|
 | `users` | Dimension | Customer profiles (name, age, gender, location, traffic source) |
-| `products` | Dimension | Product catalog — 29,120 items loaded from CSV |
-| `dist_centers` | Dimension | 10 distribution center locations |
+| `products` | Dimension | Product catalog |
+| `dist_centers` | Dimension | Distribution center locations |
 | `orders` | Fact | Order transactions with status lifecycle |
 | `order_items` | Fact | Line items per order with sale price |
-| `events` | Fact | Web/app behavioral events (browse, cart, purchase, return) |
-
-**Simulator behavior:**
-- Initializes 1,000 users + full product catalog on first run
-- Continuously generates purchases at ~2 events/second
-- Order status follows a state machine: `Processing → Shipped → Delivered → Returned/Cancelled`
-- 5% chance to create a new user per iteration
-- 40% chance to advance a random order's status per iteration
-- 20% chance to generate anonymous "ghost" browsing events
+| `events` | Fact | Web/app behavioral events |
 
 ---
 
-## Prerequisites
+## Quick Start
 
-- Docker Desktop ≥ 24.x — allocate at least **12 GB RAM**
-- Docker Compose v2
-- Python 3.12 (for the simulator)
-
-> Credentials and ports are pre-configured in `.env`.
-
----
-
-## Part 1 — Start Services
-
-### Step 1 — Core stack
+Start all core services:
 
 ```bash
-make up-core
+# Start everything except Airflow
+docker compose --profile core --profile datagen up -d
+
+# Or start with Airflow
+docker compose --profile core --profile datagen --profile airflow up -d
 ```
 
-Starts: PostgreSQL, MinIO, MariaDB, Hive Metastore, Spark cluster, Jupyter Notebook.
-
----
-
-### Step 2 — Kafka + Debezium
+Start JupyterLab (explore profile):
 
 ```bash
-make up-kafka
+docker compose --profile explore up -d
 ```
 
-The Debezium connector is registered automatically on startup. To verify:
+Stop everything:
 
 ```bash
-curl -s http://localhost:8083/connectors/thelook-connector/status | python3 -m json.tool
-```
-
----
-
-### Step 3 — Trino + Superset
-
-```bash
-make up-trino
-make up-superset
-```
-
-Superset is available at **http://localhost:8088** (admin / admin123). The Trino database connection is registered automatically on startup.
-
----
-
-### Step 4 — Airflow + dbt
-
-```bash
-make up-airflow
-```
-
-Open Airflow at **http://localhost:8085** (admin / admin123).
-
-The DAG `thelook_dbt_pipeline` runs daily at 23:00 and executes Bronze → Silver → Gold transformations via Astronomer Cosmos. To trigger manually:
-
-```bash
-docker exec thelook-airflow airflow dags trigger thelook_dbt_pipeline
-```
-
----
-
-## Part 2 — Start Stream Data
-
-Open Jupyter at **http://localhost:8888** (password: `admin123`), navigate to `work/stream_processor.ipynb` and run all cells.
-
-| Cell | Description |
-|---|---|
-| **1 — Health Checks** | Wait for all services to be ready (PostgreSQL, MinIO, Kafka, Spark) |
-| **2 — Simulator** | Start the simulator in background, wait for Debezium to create Kafka topics |
-| **3 — Spark Streaming** | Start 6 streams (one per table), register Delta tables in Hive Metastore |
-
-> Interrupt the kernel (■) to stop everything — the simulator will be terminated automatically.
-
-Once data is flowing into the bronze layer, trigger the dbt pipeline to build silver and gold tables:
-
-```bash
-docker exec thelook-airflow airflow dags trigger thelook_dbt_pipeline
-```
-
-Or let it run automatically on its daily schedule (23:00).
-
-To run individually via Makefile:
-
-```bash
-make simulator-start   # chạy simulator trên host (localhost:5432)
-make simulator-stop
-
-make stream-start      # submit spark-submit
-make stream-status
-make stream-logs
-make stream-stop
+docker compose down
 ```
 
 ---
@@ -168,47 +91,88 @@ make stream-stop
 
 | Service | URL | Credentials |
 |---|---|---|
-| Spark Master UI | http://localhost:8082 | — |
-| Jupyter Notebook | http://localhost:8888 | — |
+| Spark Master UI | http://localhost:8088 | — |
+| JupyterLab | http://localhost:8888 | — |
 | MinIO Console | http://localhost:9001 | minio / minio123 |
-| Kafka Control Center | http://localhost:9021 | — |
-| Debezium REST API | http://localhost:8083 | — |
 | Trino UI | http://localhost:8080 | — |
-| Apache Superset | http://localhost:8088 | admin / admin123 |
+| Apache Superset | http://localhost:8089 | admin / admin123 |
+| Schema Registry | http://localhost:8081 | — |
+| Debezium REST API | http://localhost:8083 | — |
 | Apache Airflow | http://localhost:8085 | admin / admin123 |
 
 ---
 
-## dbt Models
+## Docker Compose Profiles
 
-### Bronze — ephemeral CTEs on raw Delta tables
-`bronze_orders`, `bronze_order_items`, `bronze_events`
+| Profile | Services |
+|---|---|
+| `core` | postgres, minio, kafka, schema-registry, debezium, hive-metastore, spark, trino, superset |
+| `explore` | jupyter-lab |
+| `datagen` | data-generator |
+| `airflow` | airflow-db, airflow-init, airflow-scheduler, airflow-webserver |
 
-Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest state per record.
+---
 
-### Silver — enriched tables (incremental merge)
+## dbt Models (Medallion Layers)
+
+### Staging — raw source tables
+Ephemeral CTEs on raw Delta tables. Deduplicates CDC events using `ROW_NUMBER()`.
+
+### Intermediate — enriched tables (incremental merge)
 
 | Model | Description |
 |---|---|
-| `silver_order_items` | Order items joined with products, orders, users, and distribution centers |
-| `silver_orders` | Orders enriched with user info |
-| `silver_events` | Web events enriched with user profile |
+| `int_order_items` | Order items joined with products, orders, users |
+| `int_orders` | Orders enriched with user info |
+| `int_events` | Web events enriched with user profile |
 
-### Gold — business metrics (incremental delete+insert)
+### Mart — business metrics (incremental)
 
 | Model | Description |
 |---|---|
-| `gold_sales_by_category` | Revenue and margin by product category, department, and brand |
-| `gold_order_funnel` | Order volume by status with average fulfillment time |
-| `gold_customer_segments` | Purchase behavior by country, gender, age group, and traffic source |
-| `gold_product_performance` | Revenue, return rate, and cancel rate per product |
+| `mart_sales` | Revenue and margin by category, department |
+| `mart_orders` | Order volume by status with fulfillment time |
+| `mart_customers` | Purchase behavior by demographics |
+
+---
+
+## Environment Configuration
+
+All configuration via `.env` at project root. Key variables:
+
+```env
+# PostgreSQL (CDC source)
+POSTGRES_DB=thelook
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=admin123
+POSTGRES_CDC_USER=cdc_reader
+POSTGRES_CDC_PASSWORD=cdc_reader_pwd
+
+# MinIO
+MINIO_ROOT_USER=minio
+MINIO_ROOT_PASSWORD=minio123
+MINIO_ENDPOINT=http://minio:9000
+MINIO_BUCKET=lakehouse
+
+# MariaDB (Hive Metastore backend)
+MARIADB_ROOT_PASSWORD=root123
+MARIADB_DATABASE=metastore_db
+MARIADB_USER=admin
+MARIADB_PASSWORD=admin123
+
+# Superset
+SUPERSET_SECRET_KEY=<generate-a-secret>
+SUPERSET_ADMIN_USERNAME=admin
+SUPERSET_ADMIN_EMAIL=admin@thelook.com
+SUPERSET_ADMIN_PASSWORD=admin123
+```
 
 ---
 
 ## Troubleshooting
 
 **Debezium connector fails to start**
-- Ensure the simulator has run at least once (creates the tables Debezium needs to track)
+- Ensure data-generator has run (creates the tables Debezium needs to track)
 - Check WAL level: `docker exec thelook-postgres psql -U admin -d thelook -c "SHOW wal_level;"` — should return `logical`
 
 **Spark cannot write to MinIO**
@@ -219,17 +183,12 @@ Deduplicates CDC UPDATE events using `ROW_NUMBER()` to keep only the latest stat
 - MariaDB may need ~30s on first boot. Check: `docker logs thelook-hive-metastore`
 
 **Trino cannot read Delta tables**
-- Run stream processor first — it registers tables in the metastore
-- Verify: `SHOW TABLES IN delta.bronze` in Trino CLI
-
-**Trino runs out of memory on large queries**
-- Trino is configured with 4 GB heap (`trino/conf/jvm.config`)
-- Reduce concurrent queries or add `LIMIT` when exploring large tables interactively
+- Run data-generator first to produce CDC events
+- Verify: `SHOW TABLES IN delta.staging` in Trino CLI
 
 **Airflow webserver not ready**
 - `airflow-init` must complete before webserver and scheduler start
 - Check: `docker logs thelook-airflow-init`
-- If init fails: `make down-airflow && make up-airflow`
 
 ---
 

@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "thelook_events_key",
+  "namespace": "io.thelook.cdc",
+  "fields": [
+    {"name": "id", "type": "string"}
+  ]
+}

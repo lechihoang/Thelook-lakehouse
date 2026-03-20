@@ -1,17 +1,25 @@
-FROM --platform=linux/amd64 bitsondatadev/hive-metastore:latest
+FROM apache/hive:standalone-metastore-4.1.0
 
 USER root
 
-# Install AWS SDK for S3A support
-RUN curl -fsSL https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.375/aws-java-sdk-bundle-1.11.375.jar \
-      -o /opt/apache-hive-metastore-3.0.0-bin/lib/aws-java-sdk-bundle-1.11.375.jar && \
-    curl -fsSL https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.2.0/hadoop-aws-3.2.0.jar \
-      -o /opt/apache-hive-metastore-3.0.0-bin/lib/hadoop-aws-3.2.0.jar && \
-    curl -fsSL https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.28/mysql-connector-java-8.0.28.jar \
-      -o /opt/apache-hive-metastore-3.0.0-bin/lib/mysql-connector-java-8.0.28.jar
+RUN mkdir -p /tmp/deps && \
+    curl -o /tmp/deps/hadoop-aws-3.3.4.jar \
+    https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    curl -o /tmp/deps/aws-java-sdk-bundle-1.12.262.jar \
+    https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar && \
+    curl -o /tmp/deps/iceberg-hive-runtime-1.9.2.jar \
+    https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-hive-runtime/1.9.2/iceberg-hive-runtime-1.9.2.jar && \
+    cp /tmp/deps/*.jar /opt/hive/lib/ && \
+    cp /tmp/deps/*.jar /opt/hadoop/share/hadoop/common/lib/ && \
+    rm -rf /tmp/deps
 
+COPY conf/metastore-site.xml /opt/hive/conf/hive-site.xml
+COPY conf/core-site.xml /opt/hive/conf/core-site.xml
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
-EXPOSE 9083
+RUN chmod 644 /opt/hive/lib/hadoop-aws-3.3.4.jar /opt/hive/lib/aws-java-sdk-bundle-1.12.262.jar /opt/hive/lib/iceberg-hive-runtime-1.9.2.jar /opt/hadoop/share/hadoop/common/lib/hadoop-aws-3.3.4.jar /opt/hadoop/share/hadoop/common/lib/aws-java-sdk-bundle-1.12.262.jar /opt/hadoop/share/hadoop/common/lib/iceberg-hive-runtime-1.9.2.jar /opt/hive/conf/hive-site.xml /opt/hive/conf/core-site.xml && \
+    chmod +x /entrypoint.sh
+
+USER hive
+
 ENTRYPOINT ["/entrypoint.sh"]

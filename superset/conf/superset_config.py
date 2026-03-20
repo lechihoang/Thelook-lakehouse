@@ -1,0 +1,5 @@
+import os
+
+
+SECRET_KEY = os.getenv("SUPERSET_SECRET_KEY")
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME")

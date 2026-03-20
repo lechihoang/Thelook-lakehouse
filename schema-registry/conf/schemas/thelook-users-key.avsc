@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "thelook_users_key",
+  "namespace": "io.thelook.cdc",
+  "fields": [
+    {"name": "id", "type": "string"}
+  ]
+}

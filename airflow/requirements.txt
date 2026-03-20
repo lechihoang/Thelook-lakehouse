@@ -4,5 +4,6 @@ apache-airflow-providers-docker==3.9.0
 astronomer-cosmos==1.6.0
 dbt-core==1.7.0
 dbt-trino==1.7.0
+protobuf==4.25.3
 pydantic==2.5.0
 python-dotenv==1.0.0

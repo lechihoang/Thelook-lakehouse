@@ -4,7 +4,7 @@ TheLook Lakehouse — Daily Transformation Pipeline
 Astronomer Cosmos renders each dbt model as an individual Airflow task.
 Execution: LOCAL mode — dbt runs directly inside the Airflow container.
 
-DAG graph: start >> bronze >> silver >> gold
+DAG graph: start >> staging >> intermediate >> mart
 """
 
 from pathlib import Path
@@ -51,40 +51,40 @@ with DAG(
 ) as dag:
     start = EmptyOperator(task_id="start")
 
-    bronze = DbtTaskGroup(
-        group_id="bronze",
+    staging = DbtTaskGroup(
+        group_id="staging",
         project_config=project_config,
         profile_config=profile_config,
         execution_config=execution_config,
         render_config=RenderConfig(
             load_method=LoadMode.DBT_LS,
             test_behavior=TestBehavior.AFTER_EACH,
-            select=["path:models/bronze"],
+            select=["path:models/staging"],
         ),
     )
 
-    silver = DbtTaskGroup(
-        group_id="silver",
+    intermediate = DbtTaskGroup(
+        group_id="intermediate",
         project_config=project_config,
         profile_config=profile_config,
         execution_config=execution_config,
         render_config=RenderConfig(
             load_method=LoadMode.DBT_LS,
             test_behavior=TestBehavior.AFTER_EACH,
-            select=["path:models/silver"],
+            select=["path:models/intermediate"],
         ),
     )
 
-    gold = DbtTaskGroup(
-        group_id="gold",
+    mart = DbtTaskGroup(
+        group_id="mart",
         project_config=project_config,
         profile_config=profile_config,
         execution_config=execution_config,
         render_config=RenderConfig(
             load_method=LoadMode.DBT_LS,
             test_behavior=TestBehavior.AFTER_EACH,
-            select=["path:models/gold"],
+            select=["path:models/mart"],
         ),
     )
 
-    start >> bronze >> silver >> gold
+    start >> staging >> intermediate >> mart

@@ -17,14 +17,22 @@ clean-targets:
 
 models:
   thelook_lakehouse:
-    bronze:
-      +schema: bronze
+    staging:
+      +schema: staging
       +materialized: ephemeral
-    silver:
-      +schema: silver
+    intermediate:
+      +schema: intermediate
       +materialized: incremental
       +incremental_strategy: delete+insert
-    gold:
-      +schema: gold
+    mart:
+      +schema: mart
       +materialized: table
       +on_table_exists: drop
+      dim:
+        +schema: mart
+        +materialized: table
+        +on_table_exists: drop
+      fact:
+        +schema: mart
+        +materialized: table
+        +on_table_exists: drop

@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "thelook_products_key",
+  "namespace": "io.thelook.cdc",
+  "fields": [
+    {"name": "id", "type": "long"}
+  ]
+}

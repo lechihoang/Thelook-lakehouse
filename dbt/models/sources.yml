@@ -1,10 +1,10 @@
 version: 2
 
 sources:
-  - name: bronze
-    description: "Raw Delta Lake tables ingested via Debezium CDC from TheLook E-commerce PostgreSQL"
+  - name: staging
+    description: "Raw Delta Lake staging tables sourced from TheLook PostgreSQL: dynamic tables via Debezium CDC and static reference tables via bootstrap load"
     database: delta
-    schema: bronze
+    schema: staging
     loaded_at_field: kafka_timestamp
     freshness:
       warn_after: {count: 1, period: hour}
@@ -19,8 +19,8 @@ sources:
       - name: users
         description: "Customer profiles"
       - name: products
-        description: "Product catalog (loaded from CSV)"
+        description: "Product catalog bootstrapped from PostgreSQL into bronze Delta"
         freshness: null  # static reference data, skip freshness
       - name: dist_centers
-        description: "Distribution center locations"
+        description: "Distribution center locations bootstrapped from PostgreSQL into bronze Delta"
         freshness: null  # static reference data, skip freshness
