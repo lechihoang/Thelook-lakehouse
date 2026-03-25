@@ -13,7 +13,7 @@ RUN mkdir -p /tmp/deps && \
     cp /tmp/deps/*.jar /opt/hadoop/share/hadoop/common/lib/ && \
     rm -rf /tmp/deps
 
-COPY conf/metastore-site.xml /opt/hive/conf/hive-site.xml
+COPY conf/hive-site.xml /opt/hive/conf/hive-site.xml
 COPY conf/core-site.xml /opt/hive/conf/core-site.xml
 COPY entrypoint.sh /entrypoint.sh
 

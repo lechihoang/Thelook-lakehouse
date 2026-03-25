@@ -4,7 +4,7 @@
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-v2-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-3.0-017CEE?logo=apache-airflow&logoColor=white)](https://airflow.apache.org/)
 [![dbt](https://img.shields.io/badge/dbt-1.7-FF694A?logo=dbt&logoColor=white)](https://www.getdbt.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-alpine-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Postgres](https://img.shields.io/badge/Postgres-15-%23316192.svg?logo=postgresql&logoColor=white)](#)
 [![Kafka](https://img.shields.io/badge/Apache%20Kafka-3.9-000000?logo=apache-kafka&logoColor=white)](https://kafka.apache.org/)
 [![Debezium](https://img.shields.io/badge/Debezium-3.0-931812)](https://debezium.io/)
 [![Spark](https://img.shields.io/badge/Apache%20Spark-3.5-FF694A?logo=apache-spark&logoColor=white)](https://spark.apache.org/)

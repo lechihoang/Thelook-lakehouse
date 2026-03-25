@@ -156,7 +156,7 @@ services:
     networks:
       - data_network
     healthcheck:
-      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/9092"]
+      test: ["CMD-SHELL", "/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -253,7 +253,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
       - AWS_JAVA_V1_DISABLE_DEPRECATION_ANNOUNCEMENT=true
     ports:
-      - "8081:8081"
+      - "8091:8081"
     extra_hosts:
       - "localhost:host-gateway"
     networks:

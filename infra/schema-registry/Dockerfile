@@ -1,7 +1,7 @@
-FROM confluentinc/cp-schema-registry:latest
+FROM confluentinc/cp-schema-registry:7.5.0
 
 USER root
-RUN yum install -y --allowerasing curl jq && yum clean all
+RUN dnf install -y --setopt=install_weak_deps=False curl jq && dnf clean -y all
 
 COPY schemas/ /opt/schemas/
 COPY init-schemas.sh /opt/init-schemas.sh
